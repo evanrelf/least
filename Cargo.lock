@@ -251,6 +251,7 @@ dependencies = [
  "crossterm_winapi",
  "derive_more",
  "document-features",
+ "filedescriptor",
  "mio",
  "parking_lot",
  "rustix",
@@ -596,6 +597,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap",
+ "crossterm",
  "ratatui",
 ]
 
