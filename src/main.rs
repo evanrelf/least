@@ -35,21 +35,19 @@ fn main() -> anyhow::Result<ExitCode> {
         bytes
     };
 
+    let text = input.into_text()?;
+
     let mut state = State {
-        input,
+        text,
         vertical_scroll: 0,
     };
 
     'frame: loop {
-        let mut result = Ok(());
-
         terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
-            result = render(&state, area, buffer);
+            render(&state, area, buffer);
         })?;
-
-        result?;
 
         let event = 'event: loop {
             let event = crossterm::event::read()?;
@@ -72,7 +70,7 @@ fn main() -> anyhow::Result<ExitCode> {
 }
 
 struct State {
-    input: Vec<u8>,
+    text: Text<'static>,
     vertical_scroll: u16,
 }
 
@@ -109,10 +107,8 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
     exit_code
 }
 
-fn render(state: &State, area: Rect, buffer: &mut Buffer) -> anyhow::Result<()> {
-    let text = state.input.to_text()?;
-    Paragraph::new(text)
+fn render(state: &State, area: Rect, buffer: &mut Buffer) {
+    Paragraph::new(state.text.clone())
         .scroll((state.vertical_scroll, 0))
         .render(area, buffer);
-    Ok(())
 }
