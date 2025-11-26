@@ -1,5 +1,6 @@
 mod terminal;
 
+use ansi_to_tui::IntoText as _;
 use clap::Parser as _;
 use ratatui::{
     crossterm::{
@@ -9,7 +10,12 @@ use ratatui::{
     prelude::*,
     widgets::Paragraph,
 };
-use std::{fs, io, path::PathBuf, process::ExitCode};
+use std::{
+    fs,
+    io::{self, Read as _},
+    path::PathBuf,
+    process::ExitCode,
+};
 
 #[derive(clap::Parser)]
 struct Args {
@@ -22,9 +28,11 @@ fn main() -> anyhow::Result<ExitCode> {
     let mut terminal = terminal::init();
 
     let input = if let Some(path) = &args.file {
-        fs::read_to_string(path)?
+        fs::read(path)?
     } else {
-        io::read_to_string(io::stdin())?
+        let mut bytes = Vec::new();
+        io::stdin().read_to_end(&mut bytes)?;
+        bytes
     };
 
     let mut state = State {
@@ -33,17 +41,21 @@ fn main() -> anyhow::Result<ExitCode> {
     };
 
     'frame: loop {
+        let mut result = Ok(());
+
         terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
-            render(&state, area, buffer);
+            result = render(&state, area, buffer);
         })?;
+
+        result?;
 
         let event = 'event: loop {
             let event = crossterm::event::read()?;
 
             // Immediately re-render when the terminal is resized.
-            if event.is_resize() {
+            if matches!(event, Event::Resize(_, _)) {
                 continue 'frame;
             }
 
@@ -60,7 +72,7 @@ fn main() -> anyhow::Result<ExitCode> {
 }
 
 struct State {
-    input: String,
+    input: Vec<u8>,
     vertical_scroll: u16,
 }
 
@@ -97,8 +109,10 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
     exit_code
 }
 
-fn render(state: &State, area: Rect, buffer: &mut Buffer) {
-    Paragraph::new(&*state.input)
+fn render(state: &State, area: Rect, buffer: &mut Buffer) -> anyhow::Result<()> {
+    let text = state.input.to_text()?;
+    Paragraph::new(text)
         .scroll((state.vertical_scroll, 0))
         .render(area, buffer);
+    Ok(())
 }
