@@ -92,6 +92,42 @@ struct State {
     vertical_scroll: usize,
 }
 
+impl State {
+    fn scroll_up(&mut self, distance: usize) {
+        self.vertical_scroll = self.vertical_scroll.saturating_sub(distance);
+    }
+
+    fn scroll_down(&mut self, distance: usize) {
+        self.vertical_scroll += distance;
+    }
+
+    fn scroll_half_page_up(&mut self) {
+        self.scroll_up(usize::from(self.terminal_lines) / 2);
+    }
+
+    fn scroll_half_page_down(&mut self) {
+        self.scroll_down(usize::from(self.terminal_lines) / 2);
+    }
+
+    fn scroll_full_page_up(&mut self) {
+        self.scroll_up(usize::from(self.terminal_lines));
+    }
+
+    fn scroll_full_page_down(&mut self) {
+        self.scroll_down(usize::from(self.terminal_lines));
+    }
+
+    fn scroll_to_top(&mut self) {
+        self.vertical_scroll = 0;
+    }
+
+    fn scroll_to_bottom(&mut self) {
+        self.vertical_scroll = self
+            .input_lines
+            .saturating_sub(usize::from(self.terminal_lines));
+    }
+}
+
 fn should_skip_event(event: &Event) -> bool {
     match event {
         Event::Mouse(mouse_event) => matches!(
@@ -108,48 +144,22 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
     #[expect(clippy::match_same_arms)]
     match event {
         Event::Key(key_event) => match (key_event.modifiers, key_event.code) {
-            // Scroll one line
-            (KeyModifiers::NONE, KeyCode::Char('k')) => {
-                state.vertical_scroll = state.vertical_scroll.saturating_sub(1);
-            }
-            (KeyModifiers::NONE, KeyCode::Char('j')) => state.vertical_scroll += 1,
-            // Scroll half page
-            (KeyModifiers::NONE, KeyCode::Char('u')) => {
-                state.vertical_scroll = state
-                    .vertical_scroll
-                    .saturating_sub(usize::from(state.terminal_lines) / 2);
-            }
-            (KeyModifiers::NONE, KeyCode::Char('d')) => {
-                state.vertical_scroll += usize::from(state.terminal_lines) / 2;
-            }
-            // Scroll full page
-            (KeyModifiers::NONE, KeyCode::Char('b')) => {
-                state.vertical_scroll = state
-                    .vertical_scroll
-                    .saturating_sub(usize::from(state.terminal_lines));
-            }
-            (KeyModifiers::NONE, KeyCode::Char('f')) => {
-                state.vertical_scroll += usize::from(state.terminal_lines);
-            }
-            // Jump to top and bottom
-            (KeyModifiers::NONE, KeyCode::Char('g')) => state.vertical_scroll = 0,
+            (KeyModifiers::NONE, KeyCode::Char('k')) => state.scroll_up(1),
+            (KeyModifiers::NONE, KeyCode::Char('j')) => state.scroll_down(1),
+            (KeyModifiers::NONE, KeyCode::Char('u')) => state.scroll_half_page_up(),
+            (KeyModifiers::NONE, KeyCode::Char('d')) => state.scroll_half_page_down(),
+            (KeyModifiers::NONE, KeyCode::Char('b')) => state.scroll_full_page_up(),
+            (KeyModifiers::NONE, KeyCode::Char('f')) => state.scroll_full_page_down(),
+            (KeyModifiers::NONE, KeyCode::Char('g')) => state.scroll_to_top(),
             (KeyModifiers::NONE, KeyCode::Char('G'))
-            | (KeyModifiers::SHIFT, KeyCode::Char('g' | 'G')) => {
-                state.vertical_scroll = state
-                    .input_lines
-                    .saturating_sub(usize::from(state.terminal_lines));
-            }
-            // Exit
+            | (KeyModifiers::SHIFT, KeyCode::Char('g' | 'G')) => state.scroll_to_bottom(),
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => exit_code = Some(ExitCode::SUCCESS),
             (KeyModifiers::NONE, KeyCode::Char('q')) => exit_code = Some(ExitCode::SUCCESS),
             _ => {}
         },
         Event::Mouse(mouse_event) => match (mouse_event.modifiers, mouse_event.kind) {
-            // Scroll
-            (KeyModifiers::NONE, MouseEventKind::ScrollUp) => {
-                state.vertical_scroll = state.vertical_scroll.saturating_sub(1);
-            }
-            (KeyModifiers::NONE, MouseEventKind::ScrollDown) => state.vertical_scroll += 1,
+            (KeyModifiers::NONE, MouseEventKind::ScrollUp) => state.scroll_up(1),
+            (KeyModifiers::NONE, MouseEventKind::ScrollDown) => state.scroll_down(1),
             _ => {}
         },
         _ => {}
