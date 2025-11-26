@@ -7,6 +7,7 @@ use ratatui::{
         event::{Event, KeyCode, KeyModifiers, MouseEventKind},
     },
     prelude::*,
+    widgets::Paragraph,
 };
 use std::{fs, io, path::PathBuf, process::ExitCode};
 
@@ -26,7 +27,10 @@ fn main() -> anyhow::Result<ExitCode> {
         io::read_to_string(io::stdin())?
     };
 
-    let mut state = State { input };
+    let mut state = State {
+        input,
+        vertical_scroll: 0,
+    };
 
     'frame: loop {
         terminal.draw(|frame| {
@@ -57,6 +61,7 @@ fn main() -> anyhow::Result<ExitCode> {
 
 struct State {
     input: String,
+    vertical_scroll: u16,
 }
 
 fn should_skip_event(event: &Event) -> bool {
@@ -69,15 +74,21 @@ fn should_skip_event(event: &Event) -> bool {
     }
 }
 
-fn handle_event(_state: &mut State, event: &Event) -> Option<ExitCode> {
+fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
     let mut exit_code = None;
 
-    #[expect(clippy::single_match)]
     #[expect(clippy::match_same_arms)]
     match event {
         Event::Key(key_event) => match (key_event.modifiers, key_event.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => exit_code = Some(ExitCode::SUCCESS),
             (KeyModifiers::NONE, KeyCode::Char('q')) => exit_code = Some(ExitCode::SUCCESS),
+            _ => {}
+        },
+        Event::Mouse(mouse_event) => match (mouse_event.modifiers, mouse_event.kind) {
+            (KeyModifiers::NONE, MouseEventKind::ScrollUp) => {
+                state.vertical_scroll = state.vertical_scroll.saturating_sub(1);
+            }
+            (KeyModifiers::NONE, MouseEventKind::ScrollDown) => state.vertical_scroll += 1,
             _ => {}
         },
         _ => {}
@@ -87,5 +98,7 @@ fn handle_event(_state: &mut State, event: &Event) -> Option<ExitCode> {
 }
 
 fn render(state: &State, area: Rect, buffer: &mut Buffer) {
-    Text::raw(&state.input).render(area, buffer);
+    Paragraph::new(&*state.input)
+        .scroll((state.vertical_scroll, 0))
+        .render(area, buffer);
 }
