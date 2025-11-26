@@ -51,6 +51,8 @@ fn main() -> anyhow::Result<ExitCode> {
 
     let mut state = State {
         text,
+        terminal_lines,
+        input_lines,
         vertical_scroll: 0,
     };
 
@@ -83,7 +85,9 @@ fn main() -> anyhow::Result<ExitCode> {
 
 struct State {
     text: Text<'static>,
-    vertical_scroll: u16,
+    terminal_lines: u16,
+    input_lines: usize,
+    vertical_scroll: usize,
 }
 
 fn should_skip_event(event: &Event) -> bool {
@@ -101,8 +105,30 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
 
     #[expect(clippy::match_same_arms)]
     match event {
-        // TODO: Add keys for scrolling by half or full page.
         Event::Key(key_event) => match (key_event.modifiers, key_event.code) {
+            (KeyModifiers::NONE, KeyCode::Char('u')) => {
+                state.vertical_scroll = state
+                    .vertical_scroll
+                    .saturating_sub(usize::from(state.terminal_lines) / 2);
+            }
+            (KeyModifiers::NONE, KeyCode::Char('d')) => {
+                state.vertical_scroll += usize::from(state.terminal_lines) / 2;
+            }
+            (KeyModifiers::NONE, KeyCode::Char('b')) => {
+                state.vertical_scroll = state
+                    .vertical_scroll
+                    .saturating_sub(usize::from(state.terminal_lines));
+            }
+            (KeyModifiers::NONE, KeyCode::Char('f')) => {
+                state.vertical_scroll += usize::from(state.terminal_lines);
+            }
+            (KeyModifiers::NONE, KeyCode::Char('g')) => state.vertical_scroll = 0,
+            (KeyModifiers::NONE, KeyCode::Char('G'))
+            | (KeyModifiers::SHIFT, KeyCode::Char('g' | 'G')) => {
+                state.vertical_scroll = state
+                    .input_lines
+                    .saturating_sub(usize::from(state.terminal_lines));
+            }
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => exit_code = Some(ExitCode::SUCCESS),
             (KeyModifiers::NONE, KeyCode::Char('q')) => exit_code = Some(ExitCode::SUCCESS),
             _ => {}
@@ -122,6 +148,6 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
 
 fn render(state: &State, area: Rect, buffer: &mut Buffer) {
     Paragraph::new(state.text.clone())
-        .scroll((state.vertical_scroll, 0))
+        .scroll((u16::try_from(state.vertical_scroll).unwrap(), 0))
         .render(area, buffer);
 }
