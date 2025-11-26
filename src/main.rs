@@ -8,19 +8,25 @@ use ratatui::{
     },
     prelude::*,
 };
-use std::process::ExitCode;
+use std::{fs, io, path::PathBuf, process::ExitCode};
 
 #[derive(clap::Parser)]
-struct Args {}
+struct Args {
+    file: Option<PathBuf>,
+}
 
 fn main() -> anyhow::Result<ExitCode> {
-    let _args = Args::parse();
+    let args = Args::parse();
 
     let mut terminal = terminal::init();
 
-    let mut state = State {
-        message: String::from("Hello, world!"),
+    let input = if let Some(path) = &args.file {
+        fs::read_to_string(path)?
+    } else {
+        io::read_to_string(io::stdin())?
     };
+
+    let mut state = State { input };
 
     'frame: loop {
         terminal.draw(|frame| {
@@ -50,7 +56,7 @@ fn main() -> anyhow::Result<ExitCode> {
 }
 
 struct State {
-    message: String,
+    input: String,
 }
 
 fn should_skip_event(event: &Event) -> bool {
@@ -81,5 +87,5 @@ fn handle_event(_state: &mut State, event: &Event) -> Option<ExitCode> {
 }
 
 fn render(state: &State, area: Rect, buffer: &mut Buffer) {
-    Line::raw(&state.message).render(area, buffer);
+    Text::raw(&state.input).render(area, buffer);
 }
