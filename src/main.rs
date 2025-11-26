@@ -108,6 +108,11 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
     #[expect(clippy::match_same_arms)]
     match event {
         Event::Key(key_event) => match (key_event.modifiers, key_event.code) {
+            // Scroll one line
+            (KeyModifiers::NONE, KeyCode::Char('k')) => {
+                state.vertical_scroll = state.vertical_scroll.saturating_sub(1);
+            }
+            (KeyModifiers::NONE, KeyCode::Char('j')) => state.vertical_scroll += 1,
             // Scroll half page
             (KeyModifiers::NONE, KeyCode::Char('u')) => {
                 state.vertical_scroll = state
