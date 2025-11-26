@@ -18,7 +18,9 @@ fn main() -> anyhow::Result<ExitCode> {
 
     let mut terminal = terminal::init();
 
-    let mut state = State::default();
+    let mut state = State {
+        message: String::from("Hello, world!"),
+    };
 
     'frame: loop {
         terminal.draw(|frame| {
@@ -47,8 +49,9 @@ fn main() -> anyhow::Result<ExitCode> {
     }
 }
 
-#[derive(Default)]
-struct State {}
+struct State {
+    message: String,
+}
 
 fn should_skip_event(event: &Event) -> bool {
     match event {
@@ -77,6 +80,6 @@ fn handle_event(_state: &mut State, event: &Event) -> Option<ExitCode> {
     exit_code
 }
 
-fn render(_state: &State, area: Rect, buffer: &mut Buffer) {
-    Line::raw("Hello, world!").render(area, buffer);
+fn render(state: &State, area: Rect, buffer: &mut Buffer) {
+    Line::raw(&state.message).render(area, buffer);
 }
