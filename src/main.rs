@@ -8,7 +8,6 @@ use ratatui::{
         event::{Event, KeyCode, KeyModifiers, MouseEventKind},
     },
     prelude::*,
-    widgets::Paragraph,
 };
 use std::{
     fs,
@@ -155,11 +154,12 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
 }
 
 fn render(state: &State, area: Rect, buffer: &mut Buffer) {
-    Paragraph::new(state.text.clone())
-        .scroll((
-            u16::try_from(state.vertical_scroll)
-                .expect("you scrolled too far and ratatui's paragraph widget died"),
-            0,
-        ))
-        .render(area, buffer);
+    let text: Text = state
+        .text
+        .iter()
+        .skip(state.vertical_scroll)
+        .take(usize::from(state.terminal_lines))
+        .cloned()
+        .collect();
+    text.render(area, buffer);
 }
