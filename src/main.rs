@@ -27,6 +27,8 @@ fn main() -> anyhow::Result<ExitCode> {
 
     let mut terminal = terminal::init();
 
+    // TODO: Don't read all input into memory at once naively.
+    // TODO: When all input fits on screen, don't enter TUI.
     let input = if let Some(path) = &args.file {
         fs::read(path)?
     } else {
@@ -89,6 +91,7 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
 
     #[expect(clippy::match_same_arms)]
     match event {
+        // TODO: Add keys for scrolling by half or full page.
         Event::Key(key_event) => match (key_event.modifiers, key_event.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => exit_code = Some(ExitCode::SUCCESS),
             (KeyModifiers::NONE, KeyCode::Char('q')) => exit_code = Some(ExitCode::SUCCESS),
