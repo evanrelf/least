@@ -25,8 +25,6 @@ struct Args {
 fn main() -> anyhow::Result<ExitCode> {
     let args = Args::parse();
 
-    let (_, terminal_lines) = crossterm::terminal::size()?;
-
     // TODO: Don't read all input into memory at once naively.
     let input = if let Some(path) = &args.file {
         fs::read(path)?
@@ -36,12 +34,17 @@ fn main() -> anyhow::Result<ExitCode> {
         bytes
     };
 
+    let (_, terminal_lines) = crossterm::terminal::size()?;
+
+    // TODO: Handle `\r\n` line endings.
     let input_lines = bytecount::count(&input, b'\n');
 
     if input_lines <= usize::from(terminal_lines) {
+        // Input fits on screen, just print it without entering TUI.
         let mut stdout = io::stdout().lock();
         stdout.write_all(&input)?;
         stdout.flush()?;
+
         return Ok(ExitCode::SUCCESS);
     }
 
@@ -106,6 +109,7 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
     #[expect(clippy::match_same_arms)]
     match event {
         Event::Key(key_event) => match (key_event.modifiers, key_event.code) {
+            // Scroll half page
             (KeyModifiers::NONE, KeyCode::Char('u')) => {
                 state.vertical_scroll = state
                     .vertical_scroll
@@ -114,6 +118,7 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
             (KeyModifiers::NONE, KeyCode::Char('d')) => {
                 state.vertical_scroll += usize::from(state.terminal_lines) / 2;
             }
+            // Scroll full page
             (KeyModifiers::NONE, KeyCode::Char('b')) => {
                 state.vertical_scroll = state
                     .vertical_scroll
@@ -122,6 +127,7 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
             (KeyModifiers::NONE, KeyCode::Char('f')) => {
                 state.vertical_scroll += usize::from(state.terminal_lines);
             }
+            // Jump to top and bottom
             (KeyModifiers::NONE, KeyCode::Char('g')) => state.vertical_scroll = 0,
             (KeyModifiers::NONE, KeyCode::Char('G'))
             | (KeyModifiers::SHIFT, KeyCode::Char('g' | 'G')) => {
@@ -129,11 +135,13 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
                     .input_lines
                     .saturating_sub(usize::from(state.terminal_lines));
             }
+            // Exit
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => exit_code = Some(ExitCode::SUCCESS),
             (KeyModifiers::NONE, KeyCode::Char('q')) => exit_code = Some(ExitCode::SUCCESS),
             _ => {}
         },
         Event::Mouse(mouse_event) => match (mouse_event.modifiers, mouse_event.kind) {
+            // Scroll
             (KeyModifiers::NONE, MouseEventKind::ScrollUp) => {
                 state.vertical_scroll = state.vertical_scroll.saturating_sub(1);
             }
@@ -148,6 +156,10 @@ fn handle_event(state: &mut State, event: &Event) -> Option<ExitCode> {
 
 fn render(state: &State, area: Rect, buffer: &mut Buffer) {
     Paragraph::new(state.text.clone())
-        .scroll((u16::try_from(state.vertical_scroll).unwrap(), 0))
+        .scroll((
+            u16::try_from(state.vertical_scroll)
+                .expect("you scrolled too far and ratatui's paragraph widget died"),
+            0,
+        ))
         .render(area, buffer);
 }
