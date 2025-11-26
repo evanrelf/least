@@ -4,7 +4,7 @@ use clap::Parser as _;
 use ratatui::{
     crossterm::{
         self,
-        event::{Event, KeyCode, KeyModifiers},
+        event::{Event, KeyCode, KeyModifiers, MouseEventKind},
     },
     prelude::*,
 };
@@ -20,14 +20,27 @@ fn main() -> anyhow::Result<ExitCode> {
 
     let mut state = State::default();
 
-    loop {
+    'frame: loop {
         terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
             render(&state, area, buffer);
         })?;
 
-        let event = crossterm::event::read()?;
+        let event = 'event: loop {
+            let event = crossterm::event::read()?;
+
+            // Immediately re-render when the terminal is resized.
+            if event.is_resize() {
+                continue 'frame;
+            }
+
+            // Don't re-render on spammy events that we ignore (e.g. mouse movement).
+            if !should_skip_event(&event) {
+                break 'event event;
+            }
+        };
+
         if let Some(exit_code) = handle_event(&mut state, &event) {
             return Ok(exit_code);
         }
@@ -36,6 +49,16 @@ fn main() -> anyhow::Result<ExitCode> {
 
 #[derive(Default)]
 struct State {}
+
+fn should_skip_event(event: &Event) -> bool {
+    match event {
+        Event::Mouse(mouse_event) => matches!(
+            mouse_event.kind,
+            MouseEventKind::Moved | MouseEventKind::ScrollLeft | MouseEventKind::ScrollRight
+        ),
+        _ => false,
+    }
+}
 
 fn handle_event(_state: &mut State, event: &Event) -> Option<ExitCode> {
     let mut exit_code = None;
