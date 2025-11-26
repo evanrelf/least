@@ -17,6 +17,9 @@ use std::{
     process::ExitCode,
 };
 
+// TODO: Support background color extended to end of line.
+// https://github.com/dandavison/delta/blob/bae289e541b27e69d9fdda90e16fb964ada01beb/src/paint.rs#L372-L384
+
 #[derive(clap::Parser)]
 struct Args {
     file: Option<PathBuf>,
