@@ -12,7 +12,7 @@ use ratatui::{
 };
 use std::{
     fs,
-    io::{self, Read as _},
+    io::{self, Read as _, Write as _},
     path::PathBuf,
     process::ExitCode,
 };
@@ -25,10 +25,9 @@ struct Args {
 fn main() -> anyhow::Result<ExitCode> {
     let args = Args::parse();
 
-    let mut terminal = terminal::init();
+    let (_, terminal_lines) = crossterm::terminal::size()?;
 
     // TODO: Don't read all input into memory at once naively.
-    // TODO: When all input fits on screen, don't enter TUI.
     let input = if let Some(path) = &args.file {
         fs::read(path)?
     } else {
@@ -36,6 +35,17 @@ fn main() -> anyhow::Result<ExitCode> {
         io::stdin().read_to_end(&mut bytes)?;
         bytes
     };
+
+    let input_lines = bytecount::count(&input, b'\n');
+
+    if input_lines <= usize::from(terminal_lines) {
+        let mut stdout = io::stdout().lock();
+        stdout.write_all(&input)?;
+        stdout.flush()?;
+        return Ok(ExitCode::SUCCESS);
+    }
+
+    let mut terminal = terminal::init();
 
     let text = input.into_text()?;
 

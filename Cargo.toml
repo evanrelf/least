@@ -5,6 +5,7 @@ edition = "2024"
 [dependencies]
 ansi-to-tui = "7.0.0"
 anyhow = "1.0.100"
+bytecount = { version = "0.6.9", features = ["runtime-dispatch-simd"] }
 clap = { version = "4.5.53", features = ["derive"] }
 crossterm = { version = "0.28.1", features = ["use-dev-tty"] }
 ratatui = "0.29.0"
