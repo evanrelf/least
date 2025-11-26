@@ -10,6 +10,7 @@ use ratatui::{
     prelude::*,
 };
 use std::{
+    cmp::min,
     fs,
     io::{self, Read as _, Write as _},
     path::PathBuf,
@@ -93,12 +94,23 @@ struct State {
 }
 
 impl State {
+    fn max_vertical_scroll(&self) -> usize {
+        self.input_lines
+            .saturating_sub(usize::from(self.terminal_lines))
+    }
+
     fn scroll_up(&mut self, distance: usize) {
-        self.vertical_scroll = self.vertical_scroll.saturating_sub(distance);
+        self.vertical_scroll = min(
+            self.vertical_scroll.saturating_sub(distance),
+            self.max_vertical_scroll(),
+        );
     }
 
     fn scroll_down(&mut self, distance: usize) {
-        self.vertical_scroll += distance;
+        self.vertical_scroll = min(
+            self.vertical_scroll.saturating_add(distance),
+            self.max_vertical_scroll(),
+        );
     }
 
     fn scroll_half_page_up(&mut self) {
@@ -122,9 +134,7 @@ impl State {
     }
 
     fn scroll_to_bottom(&mut self) {
-        self.vertical_scroll = self
-            .input_lines
-            .saturating_sub(usize::from(self.terminal_lines));
+        self.vertical_scroll = self.max_vertical_scroll();
     }
 }
 
