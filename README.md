@@ -1,0 +1,3 @@
+# least
+
+Minimalistic terminal pager.
